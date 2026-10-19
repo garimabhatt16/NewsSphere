@@ -18,23 +18,27 @@ app.listen(4000, ()=>{
 })
 
 
-// Connect to MongoDB
-mongoose
-  .connect(process.env.MONGO)
-  .then(() => {
-    console.log('mongoose connected');
-  })
-  .catch((err) => {
-    console.log(err, 'something went wrong connecting MONGOOSE');
-  });
+async function startServer() {
+  try {
+    if (!process.env.MONGO) {
+      throw new Error('MONGO variable missing. Check API/.env');
+    }
 
+    await mongoose.connect(process.env.MONGO);
+    console.log('MongoDB connected successfully');
 
+    const urlToScrape = [
+      'https://aninews.in/topic/detail/breaking-topics/'
+    ];
 
-//mentioning the URL(s) to scrape 
-const urlToScrape = ['https://aninews.in/topic/detail/breaking-topics/']
-console.log("urlToScrape")
+    console.log('Starting news scraper...');
+    await scrapeNewsList(urlToScrape[0]);
+  } catch (err) {
+    console.error('MongoDB or scraper startup error:', err);
+  }
+}
 
-scrapeNewsList(urlToScrape[0])
+startServer();
 
 
 app.get('/breaking', async (req, res) => {

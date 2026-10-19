@@ -1,52 +1,48 @@
-require('dotenv').config()
-// console.log(process.env.API)
 
+require('dotenv').config();
 
-function summarizer(content){
+async function summarizer(content) {
+  try {
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.API}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "google/gemma-4-26b-a4b-it:free",
+          messages: [
+            {
+              role: "user",
+              content: `Summarize this news in simple language in 60-80 words maximum:\n\n${content}`
+            }
+          ]
+        })
+      }
+    );
 
-return new Promise((resolve, reject)=> {
+    const data = await response.json();
 
-    
-// console.log("hi I am here", content)
-
-fetch("https://openrouter.ai/api/v1/chat/completions", {
-  method: "POST",
-  headers: {
-    "Authorization": `Bearer ${process.env.API}`,
-    // "HTTP-Referer": `${YOUR_SITE_URL}`, // Optional, for including your app on openrouter.ai rankings.
-    // "X-Title": `${YOUR_SITE_NAME}`, // Optional. Shows in rankings on openrouter.ai.
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    "model": "nousresearch/nous-capybara-7b:free",
-    "messages": [
-      {"role": "user", "content": `Can you quickly explain me the summary of this news? Just provide the summary under 60 or 80 words max. Here is the news: ${content}`},
-    ],
-  })
-})
-.then(response => response.json())
-.then((data) => 
-    {
-        console.log("returning this data back", data)
-        // resolve(data.choices[0].message.content)
-        if (!data.choices) { return reject(new Error(JSON.stringify(data))) }
-resolve(data.choices[0].message.content)
+    if (!response.ok) {
+      throw new Error(
+        `OpenRouter API Error (${response.status}): ${
+          data.error?.message || JSON.stringify(data)
+        }`
+      );
     }
-)
-.catch((err)=>{
-    console.log(err)
-    reject(err)
-})
 
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error("AI did not return a summary.");
+    }
 
-})
+    return data.choices[0].message.content;
 
-
-
-// return response
-
+  } catch (error) {
+    console.error("Summarizer failed:", error.message);
+    throw error;
+  }
 }
 
-
-module.exports = {summarizer}
-
+module.exports = { summarizer };

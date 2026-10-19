@@ -62,72 +62,46 @@ function filterScrapedData(scrapedList) {
 
 // Function to save scraped data to the database
 async function saveScrapedData(filteredList) {
-
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    const delayBetweenRequests = 2000; // Delay in milliseconds (adjust as needed)
-
+    const delayBetweenRequests = 2000;
 
     for (const element of filteredList) {
-    try {
-        const fetchedContent = await getNewsSummary(element.link)
-        if (!fetchedContent) { console.log('Skipping, could not fetch:', element.link); continue }
-        console.log('Fetched:', fetchedContent.fullTitle)   // prints BEFORE the AI step
+        try {
+            // ✅ PEHLE duplicate check karo
+            const existing = await NewsList.findOne({ link: element.link })
+            if (existing) {
+                console.log('Skipping duplicate:', element.title)
+                continue
+            }
 
-        let getSummary = ''
-        try { getSummary = await summarizer(fetchedContent.content) }
-        catch (e) { console.log('AI summary failed:', e.message) }
+            // ✅ Tabhi content fetch karo
+            const fetchedContent = await getNewsSummary(element.link)
+            if (!fetchedContent) { console.log('Skipping, could not fetch:', element.link); continue }
+            console.log('Fetched:', fetchedContent.fullTitle)
 
-        const listToSave = new NewsList({
-            title: element.title,
-            fullTitle: fetchedContent.fullTitle,
-            fetchedContent: fetchedContent.content,
-            summarizedContent: getSummary,
-            image: element.image,
-            link: element.link,
-            updatedTime: element.updatedTime,
-            author: element.author,
-            scrapedFrom: element.scrapedFrom
-        })
-        await listToSave.save()
-        console.log('Saved:', element.title)
-    } catch (error) {
-        console.error('Error on', element.link, error.message)
+            // ✅ Tabhi AI call karo
+            let getSummary = ''
+            try { getSummary = await summarizer(fetchedContent.content) }
+            catch (e) { console.log('AI summary failed:', e.message) }
+
+            const listToSave = new NewsList({
+                title: element.title,
+                fullTitle: fetchedContent.fullTitle,
+                fetchedContent: fetchedContent.content,
+                summarizedContent: getSummary,
+                image: element.image,
+                link: element.link,
+                updatedTime: element.updatedTime,
+                author: element.author,
+                scrapedFrom: element.scrapedFrom
+            })
+            await listToSave.save()
+            console.log('Saved:', element.title)
+        } catch (error) {
+            console.error('Error on', element.link, error.message)
+        }
+        await delay(delayBetweenRequests)
     }
-    await delay(delayBetweenRequests)
-}
-    // for (const element of filteredList) {
-
-    //     //looping through the list of news we got and then scraping individual news content for each link - need to add validation in future to not fetch data for urls if present already in the database
-    //     const fetchedContent = await getNewsSummary(element.link)
-    //     // console.log("Fetched content for", element.link, fetchedContent)
-    //     //now for each news content fetched, using AI tool to summarize and format content
-    //     const getSummary = await summarizer(fetchedContent.content)
-    //     console.log("Fetched content for", element.link, fetchedContent, getSummary)
-    //     const getTitle = await titleCurator(fetchedContent.fullTitle, fetchedContent.content )
-
-    //     //now need to mention what we need to store to the db 
-    //     const listToSave = new NewsList({
-    //         title:element.title,
-    //         fullTitle: fetchedContent.fullTitle,
-    //         fetchedContent: fetchedContent.content,
-    //         summarizedContent: getSummary,
-    //         image: element.image,
-    //         link: element.link,
-    //         updatedTime: element.updatedTime,
-    //         author: element.author,
-    //         scrapedFrom: element.scrapedFrom
-    //     });
-
-    //     try {
-    //         const savedList = await listToSave.save();
-    //         console.log('Saved list:', savedList);
-    //     } catch (error) {
-    //         console.error('Error saving list:', error.message);
-    //     }
-
-    //     await delay(delayBetweenRequests);
-
-    // }
 }
 
 module.exports = { scrapeNewsList };
